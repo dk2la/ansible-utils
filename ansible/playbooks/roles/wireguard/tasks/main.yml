@@ -12,3 +12,13 @@
     - "{{ generate_keys }}"
   tags:
     - wireguard
+
+- name: Register variables from keyfiles
+  ansible.builtin.shell:
+    cmd: cat {{ config_dir_wireguard }}/{{ item }}
+  register: "{{ item }}"
+  with_items:
+    - "{{ all_keyfiles }}"
+  tags:
+    - wireguard
+  
