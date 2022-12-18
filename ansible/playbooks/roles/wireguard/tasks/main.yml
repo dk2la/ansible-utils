@@ -1,0 +1,14 @@
+---
+- name: Install tools
+  ansible.builtin.apt:
+    name: "{{ common_tools }}"
+    state: present
+  tags:
+    - wireguard
+
+- name: Generate client and server keys
+  ansible.builtin.shell: "wg genkey | tee {{ config_dir_wireguard }}/{{ item.file_name_priv }} | wg pubkey | tee {{ config_dir_wireguard }}/{{ item.file_name_pub }}"
+  with_items: 
+    - "{{ generate_keys }}"
+  tags:
+    - wireguard

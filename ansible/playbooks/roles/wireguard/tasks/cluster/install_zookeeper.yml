@@ -1,0 +1,94 @@
+---
+- name: Change various zookeeper's sysctl-settings
+  sysctl:
+    name: '{{ item.key }}'
+    value: '{{ item.value }}'
+    sysctl_set: yes
+    state: present
+    reload: yes
+    ignoreerrors: yes
+  with_dict: '{{ sysctl_zookeeper_config }}'
+
+- name: Create zookeeper directory
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: '{{ kafka_user }}'
+    group: '{{ kafka_group }}'
+  loop:
+    - "{{ zookeeper_data_dir }}"
+    - "{{ zookeeper_conf_dir }}"
+    - "{{ zookeeper_log_dir }}"
+
+- name: Create file for Zookeeper logs
+  file:
+    path: "{{ zookeeper_log_dir }}/zookeeper.log"
+    state: touch
+    mode: '0644'
+    owner: '{{ kafka_user }}'
+    group: '{{ kafka_group }}'
+
+- name: Create environment file for Zookeeper systemd service
+  template:
+    src: zoo.env.j2
+    dest: "{{ zookeeper_conf_dir }}/zoo.env"
+    mode: '0644'
+
+- name: Create zookeeper service
+  template:
+    src: zookeeper.service.j2
+    dest: "/etc/systemd/system/zookeeper.service"
+    mode: '0644'
+
+- name: Updating zookeeper broker id configuration
+  template:
+    src: "myid.j2"
+    dest: "{{ zookeeper_data_dir }}/myid"
+    owner: "{{ kafka_user }}"
+    group: "{{ kafka_group }}"
+    mode: '0640'
+
+- name: Create  JAAS config file for zookeeper
+  template:
+    src: jaas_zookeeper.cfg.j2
+    dest: "{{ zookeeper_conf_dir }}/jaas.cfg"
+    mode: '0600'
+    owner: '{{ kafka_user }}'
+    group: '{{ kafka_group }}'
+
+- name: Create zookeeper server properties file
+  template:
+    src: zookeeper.properties.j2
+    dest: "{{ zookeeper_conf_dir }}/zookeeper.properties"
+    owner: '{{ kafka_user }}'
+    group: '{{ kafka_group }}'
+    mode: '0644'
+
+# - name: Enable & start zookeeper service
+#   systemd:
+#     name: zookeeper
+#     state: started
+#     enabled: yes
+#   notify: Restart Zookeeper  
+
+- name: Logrotate for zookeeper logs
+  template:
+    src: zookeeper.logrotate.j2
+    dest: /etc/logrotate.d/zookeeper.logrotate
+    mode: 0644
+    owner: root
+    group: root
+
+- name: Enable service zookeeper and ensure it is not masked
+  ansible.builtin.systemd:
+    daemon_reload: yes
+    name: zookeeper
+    enabled: yes
+    masked: no
+
+- name: Start zookeeper service
+  ansible.builtin.systemd:
+    name: zookeeper
+    state: started
+    masked: no

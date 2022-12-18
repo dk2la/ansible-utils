@@ -1,0 +1,63 @@
+- name: Stop Kafka/Zookeper services
+  ignore_errors: true
+  systemd:
+    name: "{{ item }}"
+    enabled: false
+    state: stopped
+  loop: 
+    - zookeeper
+    - kafka
+
+- name: Unistall Kafka/Zookeper systemd units
+  ignore_errors: true
+  file:
+    path: "/etc/systemd/system/{{ item }}.service"
+    state: absent
+  loop: 
+    - zookeeper
+    - kafka
+
+- name: Find java processes
+  ignore_errors: true
+  shell: "ps -few | grep java | awk '{print $2}'"
+  register: java_processes
+
+- name: Kill running java processes
+  ignore_errors: true
+  shell: "kill {{ item }}"
+  loop: "{{ java_processes.stdout_lines }}"
+  when: java_processes.stdout_lines is iterable
+ 
+- name: Delete dirs and files
+  ignore_errors: true
+  file: 
+    path: "{{ item }}"
+    state: absent
+  loop:
+   - "{{ zookeeper_conf_dir }}"
+   - "{{ zookeeper_log_dir }}"
+   - "{{ zookeeper_data_dir }}"
+   - "{{ kafka_conf_dir }}"
+   - "{{ kafka_log_dir }}"
+   - "{{ kafka_data_dir }}"
+   - "/etc/logrotate.d/zookeeper.logrotate"
+   - "/etc/logrotate.d/kafka.logrotate"
+   - "{{ kafka_install_dir }}"
+   - "/usr/local/kafka_{{ kafka_scala_version }}-{{ kafka_version }}"
+   - "/etc/telegraf/telegraf.d/kafka.conf"
+   - "/etc/telegraf/telegraf.d/zookeeper.conf"
+   - "/opt/kafka"
+
+- name: Flush Zookeeper/Kafka related FW rules
+  ignore_errors: true
+  shell: |
+    while iptables -L --line-number | grep "zookeeper\|kafka\|zoo" > /dev/null; \
+    do iptables -D INPUT $(iptables -L --line-number | grep "zookeeper\|kafka\|zoo" | head -1 | awk '{print $1}'); \
+    done && \
+    netfilter-persistent save && \
+    netfilter-persistent reload
+
+- name: Flush ansile
+  ignore_errors: true
+  shell: |
+    rm -rf /root/.ansible && rm -rf  ~/.ansible

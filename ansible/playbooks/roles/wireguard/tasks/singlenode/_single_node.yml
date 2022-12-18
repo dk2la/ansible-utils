@@ -1,0 +1,25 @@
+---
+- name: Pre tasks
+  include: pretasks.yml
+
+#- name: Install monitoring on hosts
+#  include: monitoring.yml
+#  when: monitoring
+
+- name: Install zookeeper on hosts
+  include: install_zookeeper.yml
+
+- name: Install kafka on hosts
+  include: install_kafka.yml
+
+- name: Install monitoring on hosts
+  include: monitoring.yml
+  when: monitoring
+
+- name: Configure iptables on hosts
+  include: iptables_singlenode.yml
+
+#- name: Manage topics
+#  include: _manage_topics.yml
+#  tags:
+#    - manage_topics

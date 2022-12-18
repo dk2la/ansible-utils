@@ -1,0 +1,21 @@
+---
+config_dir_wireguard: "/etc/wireguard"
+config_name_server: "wg0.conf"
+config_name_client: "wireguard_config_client.conf"
+client_public_key_name: "client_public_key"
+client_private_key_name: "client_private_key"
+server_public_key_name: "server_public_key"
+server_private_key_name: "server_private_key"
+
+generate_keys:
+  - { file_name_priv: 'client_private_key', file_name_pub: 'client_public_key' }
+  - { file_name_priv: 'server_private_key', file_name_pub: 'server_public_key' }
+
+common_tools:
+  - python-apt
+  - python3
+  - htop
+  - net-tools
+  - vim
+  - wireguard
+  - nginx

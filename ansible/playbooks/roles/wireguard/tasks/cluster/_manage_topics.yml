@@ -1,0 +1,27 @@
+---
+- name: Construct facts for manage kafka
+  set_fact:
+    _zookeeper_connect: "{% for zoo_host in zookeeper_cluster %}{{ zoo_host }}{{ ':2182,' if not loop.last else ':2182' }}{% endfor %}"
+    _kafka_bin: "{{ kafka_install_dir }}/bin"
+
+- name: Get topics from kafka
+  shell: >
+    "{{ _kafka_bin }}"/kafka-topics.sh --zookeeper "{{ _zookeeper_connect }}" --list
+  register: _out
+  changed_when: false
+  check_mode: no
+
+- name: Topics
+  set_fact:
+    _kafka_topics: "{{ _out.stdout_lines | to_json }}"
+
+- name: Debug
+  debug:
+    msg: "Kafka have this topics {{ _kafka_topics }}"
+
+- name: Create topics
+  shell: >
+    "{{ _kafka_bin }}"/kafka-topics.sh --zookeeper "{{ _zookeeper_connect }}" --create --topic "{{ item }}" --partitions "{{ kafka_num_partitions }}" --replication-factor "{{ kafka_offsets_topic_replication_factor }}"
+  loop: "{{ kafka_managed_topics }}"
+  when: item not in _kafka_topics
+  changed_when: false

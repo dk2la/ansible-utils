@@ -1,0 +1,28 @@
+---
+- name: Create backup directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: 'root'
+    group: 'root'
+  loop:
+    - "{{ zookeeper_backup_dir }}"
+    - "{{ zookeeper_backup_script_dir }}"
+
+- name: Copy script to directory
+  template:
+    src: zookeeper_backup.sh.j2
+    dest: "{{ zookeeper_backup_script_dir }}/zookeeper_backup.sh"
+    owner: root
+    group: root
+    mode: 0700
+
+- name: Cron for backup script
+  cron:
+    name: backup_zookeeper
+    hour: "20"
+    minute: "0"
+    user: root
+    job: "flock -w 30 /tmp/.zookeer_backup -c {{ zookeeper_backup_script_dir }}/zookeeper_backup.sh 2>&1 >> {{ zookeeper_log_dir }}/zookeeper_backup.log"
+  notify: Restart cron

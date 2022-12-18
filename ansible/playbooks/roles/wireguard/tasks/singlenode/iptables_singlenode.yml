@@ -1,0 +1,57 @@
+- name: set fact kafka iptables_rules
+  set_fact:
+    _iptables_rules: "{% for item in kafka.ports %}-A INPUT -p tcp -m tcp --dport {{ item }} -s {{ kafka_accepted_networks_prod }} -j ACCEPT\n{% endfor %}"
+  ignore_errors: '{{ ansible_check_mode }}'
+  when: broker_node
+  tags: iptables
+
+- name: Set iptables rules for kafka access
+  iptables_raw:
+    name: "rules_for_{{ kafka.name }}"
+    weight: 30
+    keep_unmanaged: yes
+    rules: '{{ _iptables_rules }}'
+  ignore_errors: '{{ ansible_check_mode }}'
+  when: broker_node
+  tags: iptables
+
+- name: set fact zookeeper iptables_rules for zookeeper admin access in cluster mode
+  set_fact:
+    _iptables_rules: "{% for host in kafka_access_hosts %}-A INPUT -p tcp -m tcp --dport 2182 -s {{ hostvars[host].ansible_local.network.int_ip }} -j ACCEPT\n{% endfor %}"
+  ignore_errors: '{{ ansible_check_mode }}'
+  when: zookeeper_node
+  tags: iptables
+
+- name: set fact zookeeper iptables_rules for zookeeper admin access in single mode
+  set_fact:
+    _iptables_rules: "{{ _iptables_rules }}\n{% for host in kafka_access_hosts %}-A INPUT -p tcp -m tcp --dport 2182 -s 127.0.0.1 -j ACCEPT\n{% endfor %}"
+  ignore_errors: '{{ ansible_check_mode }}'
+  when: kafka_type == "single_node" and zookeeper_node
+  tags: iptables
+
+- name: Set iptables rules for zookeeper  admin access
+  iptables_raw:
+    name: "rules_for_access_zookeeper_port_{{ zookeeper.name }}"
+    weight: 30
+    keep_unmanaged: yes
+    rules: '{{ _iptables_rules }}'
+  ignore_errors: '{{ ansible_check_mode }}'
+  when: zookeeper_node
+  tags: iptables
+
+- name: set fact zookeeper iptables_rules for zookeeper access
+  set_fact:
+    _iptables_rules: "-A INPUT -p tcp -m tcp --dport 2182 -s {{ kafka_accepted_networks_prod }} -j ACCEPT"
+  ignore_errors: '{{ ansible_check_mode }}'
+  when: access_to_zookeper_work_network and zookeeper_node
+  tags: iptables
+
+- name: Set iptables rules for zookeeper access
+  iptables_raw:
+    name: "rules_for_access_zookeeper_port_access"
+    weight: 30
+    keep_unmanaged: yes
+    rules: '{{ _iptables_rules }}'
+  ignore_errors: '{{ ansible_check_mode }}'
+  when: access_to_zookeper_work_network  and zookeeper_node
+  tags: iptables

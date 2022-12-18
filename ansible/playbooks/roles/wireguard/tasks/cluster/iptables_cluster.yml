@@ -1,0 +1,69 @@
+#Очищаем факты
+#- name: Clear gathered facts from all currently targeted hosts
+#  ansible.builtin.meta: clear_facts
+
+# Доступ на зоокипер с  соседних зоокиперов
+# т.к. в переменная zookeeper_internal_ports определена как 2888:3888
+# меняем двоеточие на запятую чтобы указать два порта списком
+- name: Set iptables rules for zookeeper from zookeeper neigbours
+  iptables_raw:
+    name: "zookeeper_allow_neigbours"
+    weight: 30
+    keep_unmanaged: yes
+    rules: |
+      {% for cluster_host in zookeeper_cluster %}
+      -A INPUT -p tcp -m tcp -m multiport --dports {{ zookeeper_internal_ports | replace(':',',') }} -s {{ hostvars[cluster_host].ansible_local.network.int_ip }} -j ACCEPT
+      {% endfor %}
+  ignore_errors: '{{ ansible_check_mode }}'
+  when: zookeeper_node is defined
+  tags: iptables
+
+- name: Set iptables rules for zookeeper from brokers
+  iptables_raw:
+    name: "zookeeper_allow_brokers"
+    weight: 30
+    keep_unmanaged: yes
+    rules: |
+      {% for host in kafka_access_hosts %}
+      -A INPUT -p tcp -m tcp --dport {{ zookeeper.adminports }} -s {{ hostvars[host].ansible_local.network.int_ip }} -j ACCEPT
+      {% endfor %}
+  ignore_errors: '{{ ansible_check_mode }}'
+  when: zookeeper_node is defined
+  tags: iptables_cluster
+
+#Доступ на зоокипер с разрешенных сетей
+- name: Set iptables rules for zookeeper from accepted networks
+  iptables_raw:
+    name: "zookeeper_allowed_networks"
+    weight: 30
+    keep_unmanaged: yes
+    rules: |
+      {% for ip in zookeeper_accepted_networks %}
+      -A INPUT -p tcp -m tcp --dport {{ zookeeper.adminports }} -s {{ ip }} -j ACCEPT
+      {% for port in zookeeper.ports %}
+      -A INPUT -p tcp -m tcp --dport {{ port }} -s {{ ip }} -j ACCEPT
+      {% endfor %}
+      {% endfor %}
+  loop: 
+     - "{{ zookeeper_accepted_networks }}"
+  ignore_errors: '{{ ansible_check_mode }}'
+  when: zookeeper_node is defined
+  tags: iptables_cluster
+
+#Доступ на брокеры Кафки с разрешенных сетей
+- name: Set iptables rules for broker from allowed networks
+  iptables_raw:
+    name: "kafka_allowed_networks"
+    weight: 30
+    keep_unmanaged: yes
+    rules: |
+       {% for ip in kafka_accepted_networks %}
+       {% for port in kafka.ports %}
+       -A INPUT -p tcp -m tcp --dport {{ port }} -s "{{ ip }}" -j ACCEPT
+       {% endfor %}
+       {% endfor %}
+  loop:
+     - "{{ kafka_accepted_networks }}"
+  ignore_errors: '{{ ansible_check_mode }}'
+  when: broker_node is defined
+  tags: iptables_cluster

@@ -1,0 +1,33 @@
+---
+- name: Create folder for data
+  file:
+    path: /opt/kafka/data/
+    state: directory
+    mode: '0644'
+
+- name: Deploy kafka in docker
+  docker_container:
+    name: "kafka_{{ project_name }}"
+    hostname: "kafka_{{ project_name }}"
+    image: "{{ kafka_image }}"
+    state: started
+    restart_policy: always
+    published_ports:
+      - "{{ ansible_local.network.int_ip }}:9092:9092"
+    env: "{{ kafka_env }}"
+    volumes:
+      - "/opt/kafka/data/:/var/lib/kafka/data/"
+    comparisons:
+      env: strict
+      image: strict
+      ports: strict
+
+- name: Set iptables rules for service
+  iptables_raw:
+    name: "rules_for_kafka_{{ project_name }}"
+    weight: 11
+    keep_unmanaged: true
+    rules: |
+      -A INPUT -s {{ servers_com_gpn }} -p tcp -m tcp --dport 9092 -j ACCEPT
+      -A INPUT -s 172.17.0.0/24 -p tcp -m tcp --dport 9092 -j ACCEPT
+      -A FORWARD -s 172.17.0.0/24 -p tcp -m tcp --dport 9092 -j ACCEPT

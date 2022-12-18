@@ -1,0 +1,128 @@
+---
+- name: Create jolokia directories
+  file:
+    path: /opt/kafka
+    state: directory
+    mode: '0755'
+    owner: '{{ kafka_user }}'
+    group: '{{ kafka_group }}'
+
+- name: Download jolokia
+  get_url:
+    url: '{{ jolokia_download_url }}'
+    dest: /opt/kafka
+    mode: '0655'
+
+- name: Create kafka config directory
+  file:
+    path: "{{ kafka_conf_dir }}"
+    state: directory
+    mode: '0755'
+    owner: '{{ kafka_user }}'
+    group: '{{ kafka_group }}'
+  when: broker_node is defined
+
+- name: Create zookeeper config directory
+  file:
+    path: "{{ zookeeper_conf_dir }}"
+    state: directory
+    mode: '0755'
+    owner: '{{ kafka_user }}'
+    group: '{{ kafka_group }}'
+  when: zookeeper_node is defined
+
+- name: Create environment file for Kafka systemd service
+  template:
+    src: kafka.env.j2
+    dest: "{{ kafka_conf_dir }}/kafka.env"
+    mode: '0644'
+  when: (zookeeper_type is not defined) or (kafka_type == "single_node")
+
+- name: Create environment file for Kafka systemd service
+  template:
+    src: zoo.env.j2
+    dest: "{{ zookeeper_conf_dir }}/zoo.env"
+    mode: '0644'
+  when: zookeeper_type is defined
+
+- name: Create conf file for telegraf kafka metrics
+  template:
+    src: kafka.conf.j2
+    dest: "/etc/telegraf/telegraf.d/kafka.conf"
+    mode: '0644'
+  when: (zookeeper_type is not defined) or (kafka_type == "single_node")
+
+- name: Create conf file for telegraf zookeeper metrics
+  template:
+    src: zookeeper.conf.j2
+    dest: "/etc/telegraf/telegraf.d/zookeeper.conf"
+    mode: '0644'
+  when: zookeeper_type is defined
+
+- name: "Copy additional_monitoring conf files 1"
+  template:
+    src: "{{ item }}"
+    dest: "{{ telegraf_directory }}/telegraf.d/{{ item | basename | regex_replace('.j2','') }}"
+    owner: "root"
+    group: "root"
+    mode: 0644
+  with_fileglob:
+    - templates/additional_monitoring/consumer_group_*.j2
+  notify: Restart service telegraf
+  when: inventory_hostname in groups['kafka'][0]
+
+- name: "Copy additional_monitoring sh files 1"
+  template:
+    src: "{{ item }}"
+    dest: "{{ telegraf_directory }}/{{ item | basename | regex_replace('.j2','') }}"
+    owner: "{{ telegraf_user }}"
+    group: "{{ telegraf_group }}"
+    mode: 0744
+  with_fileglob:
+    - templates/additional_monitoring/scripts/consumer_group_*.j2
+  when: inventory_hostname in groups['kafka'][0]
+
+
+- name: "Copy additional_monitoring conf files 2"
+  template:
+    src: "{{ item }}"
+    dest: "{{ telegraf_directory }}/telegraf.d/{{ item | basename | regex_replace('.j2','') }}"
+    owner: "root"
+    group: "root"
+    mode: 0644
+  with_fileglob:
+    - templates/additional_monitoring/kafka_offsets*.j2
+  when: inventory_hostname in groups['kafka'][1]
+
+- name: "Copy additional_monitoring sh files 2"
+  template:
+    src: "{{ item }}"
+    dest: "{{ telegraf_directory }}/{{ item | basename | regex_replace('.j2','') }}"
+    owner: "{{ telegraf_user }}"
+    group: "{{ telegraf_group }}"
+    mode: 0744
+  with_fileglob:
+    - templates/additional_monitoring/scripts/kafka_offsets*.j2
+  when: inventory_hostname in groups['kafka'][1]
+
+- name: "Copy additional_monitoring conf files 3"
+  template:
+    src: "{{ item }}"
+    dest: "{{ telegraf_directory }}/telegraf.d/{{ item | basename | regex_replace('.j2','') }}"
+    owner: "root"
+    group: "root"
+    mode: 0644
+  with_fileglob:
+    - templates/additional_monitoring/consumer_lag*.j2
+  when: inventory_hostname in groups['kafka'][2]
+
+- name: "Copy additional_monitoring sh files 3"
+  template:
+    src: "{{ item }}"
+    dest: "{{ telegraf_directory }}/{{ item | basename | regex_replace('.j2','') }}"
+    owner: "{{ telegraf_user }}"
+    group: "{{ telegraf_group }}"
+    mode: 0744
+  with_fileglob:
+    - templates/additional_monitoring/scripts/consumer_lag*.j2
+  when: inventory_hostname in groups['kafka'][2]
