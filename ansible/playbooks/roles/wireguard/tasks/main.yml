@@ -13,12 +13,97 @@
   tags:
     - wireguard
 
-- name: Register variables from keyfiles
-  ansible.builtin.shell:
-    cmd: cat {{ config_dir_wireguard }}/{{ item }}
-  register: "{{ item }}"
-  with_items:
-    - "{{ all_keyfiles }}"
+- name: Register keys
+  block:
+  - name: Register server private key
+    ansible.builtin.shell:
+      cmd: cat {{ config_dir_wireguard }}/{{ server_private_key_name }}
+    register: server_private
+  - name: Register server public key
+    ansible.builtin.shell:
+      cmd: cat {{ config_dir_wireguard }}/{{ server_public_key_name }}
+    register: server_public
+  - name: Register client private key
+    ansible.builtin.shell:
+      cmd: cat {{ config_dir_wireguard }}/{{ client_private_key_name }}
+    register: client_private
+  - name: Register client public key
+    ansible.builtin.shell:
+      cmd: cat {{ config_dir_wireguard }}/{{ client_public_key_name }}
+    register: client_public
+  tags:
+    - wireguard  
+
+- name: set facts
+  ansible.builtin.set_fact:
+    spub: "{{ server_public.stdout }}"
+    spriv: "{{server_private.stdout }}"
+    cpub: "{{ client_public.stdout }}"
+    cpriv: "{{client_private.stdout }}"
+  tags:
+    - wireguard  
+
+- name: set net.ipv4.forward
+  sysctl:
+    name: net.ipv4.ip_forward
+    value: "1"
+    state: present
+    sysctl_set: "yes"
+    reload: "yes"
+  tags:
+    - wireguard
+
+- name: create templates
+  block:
+  - name: create server_conf
+    ansible.builtin.template:
+      src: "{{ template_src_server }}"
+      dest: "{{ template_dest_server }}"
+      mode: 0644
+      owner: "root"
+      group: "root"
+  - name: create client_conf
+    ansible.builtin.template:
+      src: "{{ template_src_client }}"
+      dest: "{{ template_dest_client }}"
+      mode: 0644
+      owner: "root"
+      group: "root"
+  tags:
+    - wireguard
+
+
+- name: Enable wg0 service
+  ansible.builtin.systemd:
+    name: "{{ wireguard_service_name }}"
+    enabled: yes
+    masked: no
+  notify: Restart wireguard service
   tags:
     - wireguard
   
+- name: debug variables1
+  ansible.builtin.debug:
+    msg:
+      - "{{ item }}"
+  with_items:
+    - "{{ server_private.stdout }}"
+    - "{{ server_public.stdout }}"
+    - "{{ client_private.stdout }}"
+    - "{{ client_public.stdout }}"
+  tags:
+    - wireguard
+
+- name: debug variables2
+  ansible.builtin.debug:
+    msg:
+      - "{{ item }}"
+  with_items:
+    - "{{ hostvars[inventory_hostname].cpub }}"
+    - "{{ hostvars[inventory_hostname].cpriv }}"
+    - "{{ hostvars[inventory_hostname].spub }}"
+    - "{{ hostvars[inventory_hostname].spriv }}"
+    - "{{ inventory_hostname }}"
+    - "{{ ansible_host }}"
+  tags:
+    - wireguard

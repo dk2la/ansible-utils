@@ -1,10 +1,10 @@
 [Interface]
-PrivateKey = {{ client_private_key }}
+PrivateKey = {{ hostvars[inventory_hostname].cpriv }}
 Address = 10.0.0.2/32
 DNS = 8.8.8.8
 
 [Peer]
-PublicKey = {{ server_public_key }}
+PublicKey = {{ hostvars[inventory_hostname].spub }}
 Endpoint = {{ ansible_host }}:51830
 AllowedIPs = 0.0.0.0/0
 PersistentKeepalive = 20

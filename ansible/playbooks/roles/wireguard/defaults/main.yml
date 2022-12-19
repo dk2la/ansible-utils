@@ -2,10 +2,26 @@
 config_dir_wireguard: "/etc/wireguard"
 config_name_server: "wg0.conf"
 config_name_client: "wireguard_config_client.conf"
+
 client_public_key_name: "client_public_key"
 client_private_key_name: "client_private_key"
 server_public_key_name: "server_public_key"
 server_private_key_name: "server_private_key"
+
+template_src_server: "templates/wireguard_server.conf.j2"
+template_src_client: "templates/wireguard_client.conf.j2"
+template_dest_server: "{{ config_dir_wireguard }}/{{ config_name_server }}"
+template_dest_client: "{{ config_dir_wireguard }}/{{ config_name_client }}"
+
+# sysctl_parameters: "net.ipv4.ip_forward=1"
+# template_src_sysctl: "templates/etc/sysctl.conf.j2"
+# template_dest_sysctl: "/etc/sysctl.conf"
+
+wireguard_service_name: "wg-quick@wg0.service"
+
+# apt install --reinstall wireguard-dkms
+# apt install linux-headers-${KERNEL_RELEASE | cut -d '-' -f3} // 4.19.0-22-amd64
+# uname -a | cut -d ' ' -f 3 | uname --kernel-release
 
 generate_keys:
   - { file_name_priv: 'client_private_key', file_name_pub: 'client_public_key' }
