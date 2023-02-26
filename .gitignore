@@ -1,0 +1,7 @@
+Vagrantfile
+.vagrant
+docker
+*.py
+*.sql
+*.sqlite3
+Screenshot 2022-12-12 at 23.55.00.png
