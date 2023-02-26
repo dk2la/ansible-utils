@@ -1,7 +1,7 @@
 import logging
 from telegram import Update
 from telegram.ext import filters, MessageHandler, ApplicationBuilder, CommandHandler, ContextTypes
-from user import *
+from user import get_user_session_by_id, get_user_by_id, create_user
 
 BOT_TOKEN = "5936849864:AAF0tdOeiLoueLDcGiJCNzHT0h61nyxYljo"
 
@@ -20,8 +20,11 @@ async def help(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logging_func(update)
-    # await create_user(update.message.from_user.id)
-    # user = await get_user_by_id(update.message.from_user.id)
+    await create_user(update.message.from_user.id)
+    user = await get_user_by_id(update.message.from_user.id)
+    session = await get_user_session_by_id(update.message.from_user.id)
+    print(user)
+    print(session)
     await context.bot.send_message(chat_id=update.effective_chat.id, text="START command")
     await context.bot.deleteMessage(message_id=update.message.message_id, chat_id=update.effective_chat.id)
 

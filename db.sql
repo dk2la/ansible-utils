@@ -1,5 +1,8 @@
+pragma foreign_keys = on;
+
 create table bot_session(
     id integer primary key,
+    bot_session_id bigint unique default 1,
     prev_action varchar(50),
     curr_action varchar(50),
     next_action varchar(50),
